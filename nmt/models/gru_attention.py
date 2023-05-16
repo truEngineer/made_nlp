@@ -24,6 +24,26 @@ class Encoder(nn.Module):
         return outputs, hidden
 
 
+class EncoderBERT(nn.Module):
+    def __init__(self, input_dim, emb_dim, enc_hid_dim, dec_hid_dim, dropout, bert_emb):
+        super().__init__()
+        self.input_dim = input_dim
+        self.emb_dim = emb_dim
+        self.enc_hid_dim = enc_hid_dim
+        self.dec_hid_dim = dec_hid_dim
+        self.embedding = bert_emb
+        self.rnn = nn.GRU(input_size=emb_dim, hidden_size=enc_hid_dim, bidirectional=True)
+        self.fc = nn.Linear(in_features=enc_hid_dim * 2, out_features=dec_hid_dim)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, src):
+        with torch.no_grad():
+            embedded = self.dropout(self.embedding(src)[0])  # get last_hidden_state
+        outputs, hidden = self.rnn(embedded)
+        hidden = torch.tanh(self.fc(torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)))
+        return outputs, hidden
+
+
 class Attention(nn.Module):
     def __init__(self, enc_hid_dim, dec_hid_dim, attn_dim):
         super().__init__()
