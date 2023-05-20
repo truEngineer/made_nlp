@@ -28,6 +28,27 @@ class Encoder(nn.Module):
         return src
 
 
+class EncoderBERT(nn.Module):
+    def __init__(self, hid_dim, num_layers, num_heads, pf_dim, dropout, device, emb_bert):
+        super().__init__()
+        self.device = device
+        self.embedding = emb_bert
+        self.layers = nn.ModuleList(
+            [EncoderLayer(hid_dim, num_heads, pf_dim, dropout, device) for _ in range(num_layers)]
+        )
+        self.dropout = nn.Dropout(dropout)
+        self.scale = torch.sqrt(torch.FloatTensor([hid_dim])).to(device)
+
+    def forward(self, src, src_mask):
+        with torch.no_grad():
+            src = self.dropout(self.embedding(src)[0] * self.scale)  # get last_hidden_state
+        # src: [batch_size, src_len, hid_dim]
+        for layer in self.layers:
+            src = layer(src, src_mask)
+        # src: [batch_size, src_len, hid_dim]
+        return src
+
+
 class EncoderLayer(nn.Module):
     def __init__(self, hid_dim, n_heads, pf_dim, dropout, device):
         super().__init__()
