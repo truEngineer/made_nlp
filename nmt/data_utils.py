@@ -8,6 +8,9 @@ from transformers import AutoTokenizer
 
 en_tokenizer = WordPunctTokenizer()
 ru_tokenizer = WordPunctTokenizer()
+en_bert_tokenizer = AutoTokenizer.from_pretrained("distilbert-base-cased")  # bert-base-uncased
+# AutoTokenizer.from_pretrained("distilbert-base-cased", bos_token='[BOS]', eos_token='[EOS]')
+# Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
 
 
 def yield_tokens(data_path, lang='en'):
@@ -116,3 +119,21 @@ def generate_batch_bert(data_batch, ru_vocab, batch_first=False):
         ru_batch = ru_batch.permute(1, 0)
 
     return en_batch, ru_batch
+
+
+def process_data_bert(data_path):
+    ru_vocab = get_vocab(data_path, lang='ru')
+
+    data = []
+    with open(data_path, encoding='utf8') as f:
+        for line in f:
+            en_line, ru_line = line.split('\t')
+            # add_special_tokens=True, add [CLS] and [SEP] tokens (instead '[BOS]' and '[EOS]' tokens)
+            en_tensor = torch.tensor(
+                en_bert_tokenizer.encode(en_line.lower(), truncation=True, max_length=512,
+                                         add_special_tokens=True), dtype=torch.long)
+            ru_tensor = torch.tensor(
+                [ru_vocab[token] for token in ru_tokenizer.tokenize(ru_line[:-1].lower())], dtype=torch.long)
+            data.append((en_tensor, ru_tensor))
+
+    return data, ru_vocab
