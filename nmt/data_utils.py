@@ -137,3 +137,20 @@ def process_data_bert(data_path):
             data.append((en_tensor, ru_tensor))
 
     return data, ru_vocab
+
+
+def generate_batch_bert(data_batch, ru_vocab, batch_first=False):
+    en_batch, ru_batch = [], []
+    for (en_item, ru_item) in data_batch:
+        en_batch.append(en_item)
+        ru_batch.append(
+            torch.cat([torch.tensor([ru_vocab['<bos>']]), ru_item, torch.tensor([ru_vocab['<eos>']])], dim=0))
+    # stack a list of tensors along a new dimension, and pad them to equal length
+    en_batch = pad_sequence(en_batch, padding_value=en_bert_tokenizer.pad_token_id)
+    ru_batch = pad_sequence(ru_batch, padding_value=ru_vocab['<pad>'])
+
+    if batch_first:
+        en_batch = en_batch.permute(1, 0)
+        ru_batch = ru_batch.permute(1, 0)
+
+    return en_batch, ru_batch
