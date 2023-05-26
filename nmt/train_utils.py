@@ -16,6 +16,11 @@ def init_weights(model):
         nn.init.uniform_(param.data, -0.08, 0.08)
 
 
+def init_weights_xavier(m):
+    if hasattr(m, 'weight') and m.weight.dim() > 1:
+        nn.init.xavier_uniform_(m.weight.data)
+
+
 def epoch_time(start_time, end_time):
     elapsed_time = end_time - start_time
     elapsed_mins = int(elapsed_time / 60)
