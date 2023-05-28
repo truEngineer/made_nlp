@@ -90,3 +90,51 @@ def translate_sentence_vectorized(src_tensor, trg_vocab, model, device, max_len=
         pred_sentences.append(pred_sentence)
 
     return pred_sentences, attention
+
+
+def bleu_score(model, device, test_loader, src_vocab, trg_vocab, transformer=False, src_bert_tokenizer=None):
+    model.eval()
+    input_text, target_text, generated_text = [], [], []
+    with torch.no_grad():
+        for batch in tqdm(test_loader, total=len(test_loader), desc="bleu", position=0, leave=True):
+            src = batch[0].to(device)
+            trg = batch[1].to(device)
+            if transformer:
+                output, _ = translate_sentence_vectorized(src, trg_vocab, model, device)  # output: List
+                if src_bert_tokenizer is not None:  # BERT + Transformer encoder
+                    input_text.extend(
+                        [src_bert_tokenizer.decode(x, skip_special_tokens=True).split() for x in src.cpu().numpy()]
+                    )
+                else:  # Transformer encoder
+                    input_text.extend([get_text(x, src_vocab) for x in src.cpu().numpy()])
+                target_text.extend([get_text(x, trg_vocab) for x in trg.cpu().numpy()])
+                generated_text.extend(output)
+            else:  # RNN Seq2Seq
+                output = model(src, trg, 0)  # turn off teacher forcing
+                output = output.argmax(dim=-1).cpu()  # torch.Size([43, 128, 10799]) -> torch.Size([43, 128])
+                if src_bert_tokenizer is not None:  # BERT + RNN encoder
+                    input_text.extend(
+                        [src_bert_tokenizer.decode(x, skip_special_tokens=True).split() for x in src.cpu().numpy().T]
+                    )
+                else:  # Embeddings encoder
+                    input_text.extend([get_text(x, src_vocab) for x in src.cpu().numpy().T])
+                target_text.extend([get_text(x, trg_vocab) for x in trg.cpu().numpy().T])
+                generated_text.extend(
+                    [get_text(x, trg_vocab) for x in output.cpu().numpy().T])  # torch.Size([128, 42])
+
+    score = corpus_bleu([[text] for text in target_text], generated_text) * 100
+    return score, input_text, target_text, generated_text
+
+
+def calc_bleu(model, device, test_loader, src_vocab, trg_vocab,
+              transformer=False, src_bert_tokenizer=None, num_examples=5):
+    score, input_text, target_text, generated_text = bleu_score(
+        model, device, test_loader, src_vocab, trg_vocab,
+        transformer=transformer, src_bert_tokenizer=src_bert_tokenizer,
+    )
+    print(f'bleu: {score:.3f}\n')
+    for _ in range(num_examples):
+        index = random.randint(0, len(target_text))
+        print('input:', " ".join(input_text[index]))
+        print('target:', " ".join(target_text[index]))
+        print('generated:', " ".join(generated_text[index]), '\n')
