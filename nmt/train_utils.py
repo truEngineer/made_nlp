@@ -138,3 +138,12 @@ def calc_bleu(model, device, test_loader, src_vocab, trg_vocab,
         print('input:', " ".join(input_text[index]))
         print('target:', " ".join(target_text[index]))
         print('generated:', " ".join(generated_text[index]), '\n')
+
+
+def plot_history(train_history, val_history):
+    with plt.style.context('seaborn'):
+        plt.figure(figsize=(4, 2))
+        plt.plot(range(1, len(train_history) + 1), train_history, label='train')
+        plt.plot(range(1, len(val_history) + 1), val_history, label='val')
+        plt.legend()
+        plt.show()
