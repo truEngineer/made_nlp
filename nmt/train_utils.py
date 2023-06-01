@@ -147,3 +147,27 @@ def plot_history(train_history, val_history):
         plt.plot(range(1, len(val_history) + 1), val_history, label='val')
         plt.legend()
         plt.show()
+
+
+def calc_inference_speed(model, device, loader, transformer=False):
+    inference_times = []
+
+    with torch.no_grad():
+        for src, trg in tqdm(loader, total=len(loader), desc="speed test", position=0, leave=True):
+            src, trg = src.to(device), trg.to(device)
+            starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+
+            if not transformer:
+                starter.record()
+                _ = model(src, trg, 0)
+                ender.record()
+            else:
+                starter.record()
+                _, _ = model(src, trg[:, :-1])
+                ender.record()
+
+            torch.cuda.synchronize()
+            curr_time = starter.elapsed_time(ender) / 1000
+            inference_times.append(curr_time)
+
+    return inference_times
