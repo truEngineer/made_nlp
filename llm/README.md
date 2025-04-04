@@ -5,3 +5,4 @@
 - GPT model from scratch
 - Unlabeled data GPT pretraining
 - Fine-tuning GPT for classification
+- Parameter-efficient Finetuning with LoRA
